@@ -6,19 +6,21 @@ import (
 	"github.com/DNS-OARC/ripeatlas/measurement"
 	"github.com/czerwonk/atlas_exporter/probe"
 	"github.com/prometheus/client_golang/prometheus"
+	"gonum.org/v1/gonum/stat"
 )
 
 var (
-	labels         []string
-	successDesc    *prometheus.Desc
-	minLatencyDesc *prometheus.Desc
-	maxLatencyDesc *prometheus.Desc
-	avgLatencyDesc *prometheus.Desc
-	sentDesc       *prometheus.Desc
-	rcvdDesc       *prometheus.Desc
-	dupDesc        *prometheus.Desc
-	ttlDesc        *prometheus.Desc
-	sizeDesc       *prometheus.Desc
+	labels            []string
+	successDesc       *prometheus.Desc
+	minLatencyDesc    *prometheus.Desc
+	maxLatencyDesc    *prometheus.Desc
+	avgLatencyDesc    *prometheus.Desc
+	stddevLatencyDesc *prometheus.Desc
+	sentDesc          *prometheus.Desc
+	rcvdDesc          *prometheus.Desc
+	dupDesc           *prometheus.Desc
+	ttlDesc           *prometheus.Desc
+	sizeDesc          *prometheus.Desc
 )
 
 type pingExporter struct {
@@ -31,6 +33,7 @@ func init() {
 	minLatencyDesc = prometheus.NewDesc(prometheus.BuildFQName(ns, sub, "min_latency"), "Minimum latency", labels, nil)
 	maxLatencyDesc = prometheus.NewDesc(prometheus.BuildFQName(ns, sub, "max_latency"), "Maximum latency", labels, nil)
 	avgLatencyDesc = prometheus.NewDesc(prometheus.BuildFQName(ns, sub, "avg_latency"), "Average latency", labels, nil)
+	stddevLatencyDesc = prometheus.NewDesc(prometheus.BuildFQName(ns, sub, "stddev_latency"), "Standard Deviation of latency", labels, nil)
 	sentDesc = prometheus.NewDesc(prometheus.BuildFQName(ns, sub, "sent"), "Number of sent icmp requests", labels, nil)
 	rcvdDesc = prometheus.NewDesc(prometheus.BuildFQName(ns, sub, "received"), "Number of received icmp repsponses", labels, nil)
 	dupDesc = prometheus.NewDesc(prometheus.BuildFQName(ns, sub, "dup"), "Number of duplicate icmp repsponses", labels, nil)
@@ -53,10 +56,19 @@ func (m *pingExporter) Export(res *measurement.Result, probe *probe.Probe, ch ch
 	}
 
 	if res.Min() > 0 {
+		// Compute standard deviation from raw results since the Atlas API does not provide it
+		pingresults := res.PingResults()
+		rtts := make([]float64, 0)
+		for _, rtt := range pingresults {
+			rtts = append(rtts, rtt.Rtt())
+		}
+		stddev := stat.StdDev(rtts[:len(pingresults)], nil)
+
 		ch <- prometheus.MustNewConstMetric(successDesc, prometheus.GaugeValue, 1, labelValues...)
 		ch <- prometheus.MustNewConstMetric(minLatencyDesc, prometheus.GaugeValue, res.Min(), labelValues...)
 		ch <- prometheus.MustNewConstMetric(maxLatencyDesc, prometheus.GaugeValue, res.Max(), labelValues...)
 		ch <- prometheus.MustNewConstMetric(avgLatencyDesc, prometheus.GaugeValue, res.Avg(), labelValues...)
+		ch <- prometheus.MustNewConstMetric(stddevLatencyDesc, prometheus.GaugeValue, stddev, labelValues...)
 	} else {
 		ch <- prometheus.MustNewConstMetric(successDesc, prometheus.GaugeValue, 0, labelValues...)
 	}

@@ -1,5 +1,7 @@
 module github.com/czerwonk/atlas_exporter
 
+go 1.14
+
 require (
 	github.com/DNS-OARC/ripeatlas v0.0.0-20171113072002-0ef1b8935530
 	github.com/alecthomas/template v0.0.0-20160405071501-a0175ee3bccc
@@ -21,6 +23,7 @@ require (
 	golang.org/x/crypto v0.0.0-20180613202254-e6b1200d11b0
 	golang.org/x/net v0.0.0-20180611182652-db08ff08e862
 	golang.org/x/sys v0.0.0-20180613171135-56ede360ec1c
+	gonum.org/v1/gonum v0.7.0
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
 	gopkg.in/yaml.v2 v2.2.1
 )
